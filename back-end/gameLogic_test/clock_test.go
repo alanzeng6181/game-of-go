@@ -1,24 +1,24 @@
-package gamelogictest_test
+package gameLogic_test
 
 import (
 	"strings"
 	"testing"
 	"time"
 
-	gamelogic "github.com/alanzeng6181/game-of-go/gameLogic"
+	gl "github.com/alanzeng6181/game-of-go/gameLogic"
 )
 
 func TestClock_5_2_2_SameColor(t *testing.T) {
-	input := make(chan gamelogic.Stone)
-	clock, err := gamelogic.NewClock(5*time.Millisecond, 2*time.Millisecond, 2, input)
+	input := make(chan gl.Stone)
+	clock, err := gl.NewClock(gl.MakeClockConfig(5*time.Millisecond, 2*time.Millisecond, 2), input)
 	if err != nil {
 		t.Error(err)
 	}
-	go func(send chan<- gamelogic.Stone) {
+	go func(send chan<- gl.Stone) {
 		time.Sleep(1 * time.Millisecond)
-		send <- gamelogic.Black
+		send <- gl.Black
 		time.Sleep(1 * time.Millisecond)
-		send <- gamelogic.Black
+		send <- gl.Black
 	}(input)
 
 	clock.Start()
@@ -42,16 +42,16 @@ func TestClock_5_2_2_SameColor(t *testing.T) {
 }
 
 func TestClock_5_2_2_BlackTimout(t *testing.T) {
-	input := make(chan gamelogic.Stone)
-	clock, err := gamelogic.NewClock(5*time.Millisecond, 2*time.Millisecond, 2, input)
+	input := make(chan gl.Stone)
+	clock, err := gl.NewClock(gl.MakeClockConfig(5*time.Millisecond, 2*time.Millisecond, 2), input)
 	if err != nil {
 		t.Error(err)
 	}
-	go func(send chan<- gamelogic.Stone) {
+	go func(send chan<- gl.Stone) {
 		time.Sleep(1 * time.Millisecond)
-		send <- gamelogic.Black
+		send <- gl.Black
 		time.Sleep(1 * time.Millisecond)
-		send <- gamelogic.White
+		send <- gl.White
 	}(input)
 
 	clock.Start()
@@ -65,7 +65,7 @@ func TestClock_5_2_2_BlackTimout(t *testing.T) {
 	select {
 	case <-time.NewTimer(20 * time.Millisecond).C:
 	case result := <-timeout:
-		if strings.Contains(result.Error(), "timeout") && result.Stone == gamelogic.Black {
+		if strings.Contains(result.Error(), "timeout") && result.Stone == gl.Black {
 			correct = true
 		}
 	}
@@ -75,33 +75,33 @@ func TestClock_5_2_2_BlackTimout(t *testing.T) {
 }
 
 func TestClock_5_2_2_NoTimout(t *testing.T) {
-	input := make(chan gamelogic.Stone)
-	clock, err := gamelogic.NewClock(5*time.Millisecond, 2*time.Millisecond, 2, input)
+	input := make(chan gl.Stone)
+	clock, err := gl.NewClock(gl.MakeClockConfig(5*time.Millisecond, 2*time.Millisecond, 2), input)
 	if err != nil {
 		t.Error(err)
 	}
-	go func(send chan<- gamelogic.Stone) {
+	go func(send chan<- gl.Stone) {
 		time.Sleep(5 * time.Millisecond)
-		send <- gamelogic.Black
-		send <- gamelogic.White
+		send <- gl.Black
+		send <- gl.White
 		time.Sleep(3 * time.Millisecond)
-		send <- gamelogic.Black
-		send <- gamelogic.White
+		send <- gl.Black
+		send <- gl.White
 		time.Sleep(3 * time.Millisecond)
-		send <- gamelogic.Black
-		send <- gamelogic.White
+		send <- gl.Black
+		send <- gl.White
 		time.Sleep(1 * time.Millisecond)
-		send <- gamelogic.Black
-		send <- gamelogic.White
+		send <- gl.Black
+		send <- gl.White
 		time.Sleep(1 * time.Millisecond)
-		send <- gamelogic.Black
-		send <- gamelogic.White
+		send <- gl.Black
+		send <- gl.White
 		time.Sleep(1 * time.Millisecond)
-		send <- gamelogic.Black
-		send <- gamelogic.White
+		send <- gl.Black
+		send <- gl.White
 		time.Sleep(1 * time.Millisecond)
-		send <- gamelogic.Black
-		send <- gamelogic.White
+		send <- gl.Black
+		send <- gl.White
 	}(input)
 
 	clock.Start()

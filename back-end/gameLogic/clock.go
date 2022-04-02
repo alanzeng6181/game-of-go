@@ -12,6 +12,10 @@ type ClockConfig struct {
 	violations uint8
 }
 
+func MakeClockConfig(base time.Duration, ticking time.Duration, violations uint8) ClockConfig {
+	return ClockConfig{base, ticking, violations}
+}
+
 type Clock struct {
 	timeout chan struct {
 		Stone

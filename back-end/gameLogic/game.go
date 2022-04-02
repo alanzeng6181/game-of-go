@@ -43,7 +43,7 @@ func (game *Game) Move(position int16, color Stone) ([]Stone, error) {
 	if !game.Board.IsBlackNext && color == White {
 		return nil, errors.New("it's White's turn")
 	}
-	if _, err := game.Board.move(position); err != nil {
+	if _, err := game.Board.Move(position); err != nil {
 		return nil, err
 	}
 
