@@ -1,6 +1,10 @@
-import {useRef, useEffect} from 'react'
+import {useSelector} from 'react-redux'
+import {useRef, useEffect, useContext} from 'react'
 import styles from '../styles/Board.module.css'
+import {WSClientContext} from '../providers/wsclient'
 const Board = props =>{
+    const sendMessage = (useContext(WSClientContext)).sendMessage
+    const arr = useSelector((state)=>state.gameState.Positions) ?? new Array(361)
     const size =props.boardRows ?? 1000;
     const boardRows = props.boardRows ?? 19;
     const margin = Math.ceil(size * 0.05);
@@ -20,12 +24,16 @@ const Board = props =>{
 
         const distance = Math.sqrt(Math.pow(X-intersectX,2)+Math.pow(Y-intersectY,2))
 
-        if (distance<=sensitivity){
-            console.log(`clicked row:${row}, col:${col}`);
+        if (distance<=sensitivity){      
+            sendMessage(JSON.stringify({
+                "Command":"Move",
+                "Arguments":[row, col]
+            }))
         } else{
             console.log(`clicked, but position unambigous`);
         }
     }
+
     const boardCanvasRef=useRef(null)
     const gridCanvasRef=useRef(null)
     const stoneCanvasRef=useRef(null)
@@ -38,7 +46,6 @@ const Board = props =>{
         background.onload=()=>{
             boardCanvasContext.drawImage(background,0,0, boardCanvas.width, boardCanvas.height)
         }
-        
         
         const gridCanvas = gridCanvasRef.current;
         const gridContext = gridCanvas.getContext('2d');
@@ -57,11 +64,8 @@ const Board = props =>{
         const stoneCanvas = stoneCanvasRef.current
         const stoneCanvasContext = stoneCanvas.getContext('2d')
         //stoneCanvasContext.globalAlpha=0.3
-        const arr = new Array(361);
-        arr.fill(0);
-        arr[0]=1;
-        arr[17]=2;
-        arr[24]=1;
+        //TODO: null handling
+        
         const stoneSize=Math.floor(space*0.92);
 
         const placeStones = (image, stoneColor, positionArray)=>{

@@ -205,7 +205,9 @@ func TestBoardLibertyCountSpecficOrder(t *testing.T) {
 	board := gl.NewBoard(5)
 	moves := []int16{17, 2, 13, 8, 0, 6, 22, 12, 11}
 	for _, p := range moves {
-		board.Move(p)
+		if ok, err := board.Move(p); !ok {
+			t.Errorf("expected valid move but got => %s", err.Error())
+		}
 	}
 	assertEqual(2, board.GetLiberty(0, 0), t)
 	assertEqual(3, board.GetLiberty(0, 2), t)
@@ -232,7 +234,9 @@ func TestBoardLibertyCountSpecficOrder2(t *testing.T) {
 	board := gl.NewBoard(5)
 	moves := []int16{11, 8, 0, 6, 22, 12, 13, 2, 17}
 	for _, p := range moves {
-		board.Move(p)
+		if ok, err := board.Move(p); !ok {
+			t.Errorf("expected valid move but got => %s", err.Error())
+		}
 	}
 	assertEqual(2, board.GetLiberty(0, 0), t)
 	assertEqual(3, board.GetLiberty(0, 2), t)
@@ -243,4 +247,25 @@ func TestBoardLibertyCountSpecficOrder2(t *testing.T) {
 	assertEqual(2, board.GetLiberty(2, 3), t)
 	assertEqual(4, board.GetLiberty(3, 2), t)
 	assertEqual(4, board.GetLiberty(4, 2), t)
+}
+
+func TestBoardCapture2OnSide(t *testing.T) {
+	// attempted move should succeed, because it would capture (2,2) and cause it to have 1 liberty
+
+	/*
+		const state = `
+			b w - - -
+			b w - - -
+			* - - b -
+			- - - - -
+			- - - - -
+		`*/
+	board := gl.NewBoard(5)
+	moves := []int16{0, 1, 5, 6, 13, 10}
+	for _, p := range moves {
+		if ok, err := board.Move(p); !ok {
+			t.Errorf("expected valid move but got => %s", err.Error())
+		}
+	}
+	assertEqual(2, board.BlackCapture, t)
 }

@@ -12,7 +12,6 @@ const Game = ()=>{
             </Col>
             <Col span={5}>
                 <Row style={{height:500}}>
-
                 </Row>
                 <Messenger></Messenger>
             </Col>

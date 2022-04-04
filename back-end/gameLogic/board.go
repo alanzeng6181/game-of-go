@@ -167,7 +167,7 @@ func (board *Board) capture(position int16) int16 {
 		neighbors := board.neighbors(position)
 		for _, n := range neighbors {
 
-			if board.Positions[n] == board.Positions[node] {
+			if board.Positions[n] == color {
 				if _, done := processed[n]; done {
 					continue
 				}
