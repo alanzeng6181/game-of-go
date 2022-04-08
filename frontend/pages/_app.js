@@ -1,12 +1,16 @@
 import '../styles/globals.css'
 import 'antd/dist/antd.css'
 import { Provider } from 'react-redux';
-import store from '../services/store'
+import {store, persistor} from '../services/store'
+import { PersistGate } from 'redux-persist/integration/react';
 
 function MyApp({ Component, pageProps }) {
+  
   return (
     <Provider store={store}>
-    <Component {...pageProps} />
+      <PersistGate persistor={persistor}>
+        <Component {...pageProps} />
+      </PersistGate>
     </Provider>
   )
 }

@@ -27,7 +27,7 @@ const Board = props =>{
         if (distance<=sensitivity){      
             sendMessage(JSON.stringify({
                 "Command":"Move",
-                "Arguments":[`${row}`, `${col}`]
+                "Arguments":[`${props.gameId}`,`${row}`, `${col}`]
             }))
         } else{
             console.log(`clicked, but position unambigous`);
@@ -42,7 +42,7 @@ const Board = props =>{
         const boardCanvas = boardCanvasRef.current
         const boardCanvasContext = boardCanvas.getContext('2d')
         const background = new Image()
-        background.src = "woodveneer.png"
+        background.src = "/woodveneer.png"
         background.onload=()=>{
             boardCanvasContext.drawImage(background,0,0, boardCanvas.width, boardCanvas.height)
         }
@@ -79,13 +79,13 @@ const Board = props =>{
         }
 
         const blackStoneImage = new Image(stoneSize, stoneSize);
-        blackStoneImage.src = "blackstone.png"
+        blackStoneImage.src = "/blackstone.png"
         blackStoneImage.onload=()=> placeStones(blackStoneImage, 1, arr);
 
         const whiteStoneImage = new Image(stoneSize, stoneSize);
-        whiteStoneImage.src = "whitestone.png"
+        whiteStoneImage.src = "/whitestone.png"
         whiteStoneImage.onload=()=>placeStones(whiteStoneImage, 2, arr)
-    })
+    }, [arr])
     return  (<div>
                 <canvas className={styles.bottomLayer} width={1000} height={1000} ref={boardCanvasRef} ></canvas>
                 <canvas className={styles.middleLayer} width={1000} height={1000} ref={gridCanvasRef} ></canvas>

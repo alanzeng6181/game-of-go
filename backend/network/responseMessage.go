@@ -5,9 +5,10 @@ type ResponseMessage struct {
 	Content      string
 }
 
-type ResponseType int8
+type ResponseType string
 
 const (
-	State ResponseType = iota
-	Message
+	State   ResponseType = "State"
+	Message ResponseType = "Message"
+	Error   ResponseType = "Error"
 )

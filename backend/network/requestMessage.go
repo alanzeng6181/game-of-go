@@ -13,4 +13,5 @@ const (
 	Resign
 	ClaimTerritory
 	MessageCommand
+	Observe
 )

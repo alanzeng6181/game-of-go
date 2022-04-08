@@ -17,12 +17,22 @@ func NewProfileManager() *ProfileManager {
 		UserId:   "player1",
 		Level:    1,
 		PlayerId: 1,
-		Password: "Password",
+		Password: "password",
 	}, Player{
-		UserId:   "player1",
+		UserId:   "player2",
 		Level:    1,
-		PlayerId: 1,
-		Password: "Password",
+		PlayerId: 2,
+		Password: "password",
+	}, Player{
+		UserId:   "player3",
+		Level:    1,
+		PlayerId: 3,
+		Password: "password",
+	}, Player{
+		UserId:   "player4",
+		Level:    1,
+		PlayerId: 4,
+		Password: "password",
 	})
 	return &pm
 }
@@ -64,5 +74,5 @@ func (pm *ProfileManager) GetUserId(user string, password string) (string, error
 			return p.UserId, nil
 		}
 	}
-	return -1, errors.New("invalid credentail")
+	return "", errors.New("invalid credentail")
 }

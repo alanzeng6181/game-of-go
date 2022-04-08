@@ -1,13 +1,21 @@
 import {Row, Col, List, Skeleton, Avatar, Input, Button} from 'antd'
 import InfiniteScroll from 'react-infinite-scroll-component'
 import React, {useState, useRef} from 'react'
+import { useSelector } from 'react-redux'
+import {useContext} from 'react'
+import { WSClientContext } from '../providers/wsclient'
 
-const Messenger = ()=>{
-    const [inputMessage, setInputMessage] = useState("");
-    const [messages, setMessages] = useState([]);
+const Messenger = (props)=>{
+    const sendMessage = (useContext(WSClientContext)).sendMessage;
+    const [inputMessage, setInputMessage] = useState()
+    const messages = useSelector(
+        state=>state.gameState.Comments
+        ) ?? [];
     const handleClick=()=>{
-        setMessages([...messages,{id:messages.length, content:inputMessage}]);
-        setInputMessage("")
+        sendMessage(JSON.stringify({
+            "Command":"Comment",
+            "Arguments":[`${props.gameId}`,`${inputMessage}`]
+        }));
     };
 
     const onChange = (e)=>{

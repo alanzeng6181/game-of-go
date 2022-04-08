@@ -1,43 +1,31 @@
 package middlewares
 
 import (
-	"errors"
-	"github.com/golang-jwt/jwt"
+	"context"
 	"net/http"
-)
 
-//TODO secure this
-var JWTSigningKey []byte = []byte("TemporaryNotSecureKey")
+	security "github.com/alanzeng6181/game-of-go/security"
+)
 
 func ApplyAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		tokenStr := r.Header.Get("Token")
 		if tokenStr == "" {
-			tokenStr = r.URL.Query().Get("Token")
+			tokenStr = r.URL.Query().Get("token")
 		}
 		if tokenStr == "" {
 			w.WriteHeader(401)
 			w.Write([]byte("missing auth token"))
 		}
-		token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
-			if t.Method != jwt.SigningMethodHS256 {
-				return nil, errors.New("expected HS356 signing method")
-			}
-			return JWTSigningKey, nil
-		})
+		userId, err := security.GetUserId(tokenStr)
 
 		if err != nil {
 			w.WriteHeader(401)
-			w.Write([]byte("unable to parse jwt token"))
+			w.Write([]byte("unable to get userId from jwt token"))
+			return
 		}
 
-		if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-			context := context.WithValue(r.Context(), "user", claims["user"].(string))
-			next.ServeHTTP(w, r.Context())
-		} else {
-			w.WriteHeader(401)
-			w.Write([]byte("invalid token claims"))
-		}
-
+		ctx := context.WithValue(r.Context(), "user", userId)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

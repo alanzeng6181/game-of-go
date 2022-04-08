@@ -12,7 +12,7 @@ import (
 	gamelogic "github.com/alanzeng6181/game-of-go/gameLogic"
 	net "github.com/alanzeng6181/game-of-go/network"
 	middlewares "github.com/alanzeng6181/game-of-go/network/middlewares"
-	"github.com/golang-jwt/jwt/v4"
+	"github.com/alanzeng6181/game-of-go/security"
 	"github.com/gorilla/websocket"
 )
 
@@ -24,27 +24,26 @@ func login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var credential = struct {
-		username string
-		password string
+		Username string
+		Password string
 	}{}
 	err = json.Unmarshal(bytes, &credential)
 	if err != nil {
 		w.WriteHeader(400)
 		w.Write([]byte("request body need to be in json format"))
+		return
 	}
 
-	if userId, err := profileManager.GetPlayerId(credential.username, credential.password); err == nil && playerId >= 0 {
-		token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-			"user": userId,
-			"nbf":  time.Now().Add(24 * time.Hour).Unix(),
-		})
-		tokenString, err := token.SignedString(middlewares.JWTSigningKey)
+	if userId, err := profileManager.GetUserId(credential.Username, credential.Password); err == nil && userId != "" {
+		tokenStr, err := security.GetToken(userId)
 		if err != nil {
 			w.WriteHeader(500)
 			w.Write([]byte("Unable to get asigned jwt token"))
+		} else {
+			w.WriteHeader(200)
+			w.Write([]byte(tokenStr))
 		}
-		w.WriteHeader(200)
-		w.Write([]byte(tokenString))
+		return
 	}
 
 	w.WriteHeader(401)
@@ -52,10 +51,40 @@ func login(w http.ResponseWriter, r *http.Request) {
 }
 
 func loadProfile(w http.ResponseWriter, r *http.Request) {
-	user := r.Header.Get("user")
+	if player := getPlayer(r); player != nil {
+		playingGame, obervingGames := gameManager.GetGames(player.PlayerId)
+		bytes, err := json.Marshal(struct {
+			PlayerId       int64
+			UserId         string
+			Level          int8
+			CurrentGameId  *int64
+			Wins           int32
+			Losses         int32
+			ObservingGames []int64
+		}{
+			PlayerId:       player.PlayerId,
+			UserId:         player.UserId,
+			Level:          player.Level,
+			CurrentGameId:  playingGame,
+			Wins:           player.Wins,
+			Losses:         player.Losses,
+			ObservingGames: obervingGames,
+		})
+
+		if err != nil {
+			w.WriteHeader(500)
+			w.Write([]byte("error occurred when writing profile data"))
+		} else {
+			w.WriteHeader(200)
+			w.Write(bytes)
+		}
+		return
+	}
+	w.WriteHeader(400)
+	w.Write([]byte("unable to locate user"))
 }
 
-func (r *http.Request) getPlayer() *Player {
+func getPlayer(r *http.Request) *gamelogic.Player {
 	if user := r.Context().Value("user"); user != nil {
 		return profileManager.GetPlayerByUserId(user.(string))
 	}
@@ -74,7 +103,7 @@ func findGame(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("request body is expected to be GameRequest json"))
 	}
 
-	player := r.getPlayer()
+	player := getPlayer(r)
 	if player == nil {
 		w.WriteHeader(400)
 		w.Write([]byte("playerId not specified"))
@@ -94,27 +123,23 @@ func findGame(w http.ResponseWriter, r *http.Request) {
 }
 
 func wsConnect(w http.ResponseWriter, r *http.Request) {
-	query := r.URL.Query()
-	gameIdStr := query.Get("gameId")
-	playerIdStr := query.Get("playerId")
-	if gameIdStr == "" || playerIdStr == "" {
-		w.WriteHeader(400)
-		w.Write([]byte("gameId and playerId must be specified"))
+	player := getPlayer(r)
+
+	if player == nil {
+		w.WriteHeader(401)
+		return
 	}
-	//Replace
-	gameId, _ := strconv.Atoi(gameIdStr)
-	playerId, _ := strconv.Atoi(playerIdStr)
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	gameManager.AddPlayer(int64(playerId), int64(gameId), conn)
-	go handleConnection(conn, gameId, playerId)
+	go handleConnection(conn, player)
 }
 
-func handleConnection(conn *websocket.Conn, gameId int, playerId int) {
+func handleConnection(conn *websocket.Conn, player *gamelogic.Player) {
+	gameManager.SetConnection(player.PlayerId, conn)
 	for {
 		messageType, bytes, err := conn.ReadMessage()
 		if err != nil {
@@ -127,22 +152,33 @@ func handleConnection(conn *websocket.Conn, gameId int, playerId int) {
 				//handle err
 			}
 			if message.Command == net.Move {
-				row, err := strconv.Atoi(message.Arguments[0])
+				gameId, err := strconv.Atoi(message.Arguments[0])
+				invalidMoveCommandErrorMsg := fmt.Sprintf("invalid move command: %v, expected ['gameId','row','col']", message.Arguments)
 				if err != nil {
-					conn.WriteMessage(websocket.TextMessage, parseErrorResponse(fmt.Sprintf("invalid move, %v", message.Arguments)))
+					conn.WriteMessage(websocket.TextMessage, errorResponseBytes(invalidMoveCommandErrorMsg))
 				}
-				col, err := strconv.Atoi(message.Arguments[1])
+				row, err := strconv.Atoi(message.Arguments[1])
 				if err != nil {
-					conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("invalid move, %v", message.Arguments)))
+					conn.WriteMessage(websocket.TextMessage, errorResponseBytes(invalidMoveCommandErrorMsg))
 				}
-
-				gameManager.Move(int64(gameId), int16(row), int16(col), int64(playerId))
+				col, err := strconv.Atoi(message.Arguments[2])
+				if err != nil {
+					conn.WriteMessage(websocket.TextMessage, errorResponseBytes(invalidMoveCommandErrorMsg))
+				}
+				gameManager.Move(int64(gameId), int16(row), int16(col), player.PlayerId)
 			} else if message.Command == net.TakeBack {
 
 			} else if message.Command == net.Resign {
 
 			} else if message.Command == net.MessageCommand {
 
+			} else if message.Command == net.Observe {
+				gameId, err := strconv.Atoi(message.Arguments[0])
+				invalidMoveCommandErrorMsg := fmt.Sprintf("invalid move command: %v, expected ['gameId','row','col']", message.Arguments)
+				if err != nil {
+					conn.WriteMessage(websocket.TextMessage, errorResponseBytes(invalidMoveCommandErrorMsg))
+				}
+				gameManager.AddObserver(int64(player.PlayerId), int64(gameId))
 			}
 		}
 	}
@@ -159,14 +195,18 @@ var gameManager = gamelogic.NewGameManager()
 var profileManager = gamelogic.NewProfileManager()
 
 func main() {
-	http.Handle("/api/findgame", middlewares.ApplyAuth(findGame))
-	http.Handle("/api/login", login)
-	http.Handle("/api/ws", middlewares.ApplyAuth(wsConnect))
-	http.Handle("/api/profile", middlewares.ApplyAuth(loadProfile))
+	http.Handle("/api/findgame", middlewares.ApplyAuth(http.HandlerFunc(findGame)))
+	http.HandleFunc("/api/login", login)
+	http.Handle("/api/ws", middlewares.ApplyAuth(http.HandlerFunc(wsConnect)))
+	http.Handle("/api/profile", middlewares.ApplyAuth(http.HandlerFunc(loadProfile)))
 	log.Println("listening at port 8080...")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
-func parseErrorResponse(errorMessage string) []byte {
-	return []byte(errorMessage)
+func errorResponseBytes(errorMessage string) []byte {
+	bytes, _ := json.Marshal(net.ResponseMessage{
+		ResponseType: net.Error,
+		Content:      errorMessage,
+	})
+	return bytes
 }

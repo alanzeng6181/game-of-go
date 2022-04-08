@@ -73,6 +73,17 @@ func (game *Game) Move(position int16, color Stone) (*GameState, error) {
 	}, nil
 }
 
+func (game *Game) GetGameState() GameState {
+	return GameState{
+		Positions:     game.Board.Positions,
+		WhiteCaptures: int8(game.Board.WhiteCapture),
+		BlackCaptures: int8(game.Board.WhiteCapture),
+		Status:        game.Status,
+		ClockState:    game.Clock.ToClockState(),
+		Comments:      game.Comments,
+	}
+}
+
 func (game *Game) Move1(row int16, col int16, color Stone) (*GameState, error) {
 	return game.Move(row*game.Board.Size+col, color)
 }
@@ -81,16 +92,16 @@ func (game *Game) Resign(color Stone) {
 
 }
 
-type Status int8
+type Status string
 
 const (
-	NotStarted Status = iota
-	InProgress
-	Over
-	BlackWon
-	WhiteWon
-	BlackResign
-	WhiteResign
-	BlackTimeout
-	WhiteTimeout
+	NotStarted   Status = "NotStarted"
+	InProgress   Status = "InProgress"
+	Over         Status = "Over"
+	BlackWon     Status = "BlackWon"
+	WhiteWon     Status = "WhiteWon"
+	BlackResign  Status = "BlackResign"
+	WhiteResign  Status = "WhiteResign"
+	BlackTimeout Status = "BlackTimeout"
+	WhiteTimeout Status = "WhiteTimeout"
 )

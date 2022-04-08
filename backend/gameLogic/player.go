@@ -6,7 +6,7 @@ type Player struct {
 	PlayerId      int64
 	CurrentGameId *int64
 	Wins          int32
-	Loss          int32
+	Losses        int32
 	//TODO temp code
 	Password string
 }

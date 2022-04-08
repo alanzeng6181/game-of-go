@@ -23,41 +23,79 @@ type GameManager struct {
 	connectionManager *ConnectionManager
 }
 
-func (gameManager *GameManager) AddPlayer(playerId int64, gameId int64, conn *websocket.Conn) {
+func (gameManager *GameManager) AddObserver(playerId int64, gameId int64) {
 	game := gameManager.games[gameId]
 	if game.BlackPlayer.PlayerId != playerId && game.WhitePlayer.PlayerId != playerId {
 		game.Observers = append(game.Observers, &Player{PlayerId: playerId})
 	}
+}
+
+func (gameManager *GameManager) SetConnection(playerId int64, conn *websocket.Conn) {
 	gameManager.connectionManager.AddConnection(playerId, conn)
 }
 
 func (gameManager *GameManager) Move(gameId int64, row int16, col int16, playerId int64) error {
-	if val, ok := gameManager.games[gameId]; ok {
+	if game, ok := gameManager.games[gameId]; ok {
 		color := White
-		if val.BlackPlayer.PlayerId == playerId {
+		if game.BlackPlayer.PlayerId == playerId {
 			color = Black
 		}
-		gameState, err := val.Move1(row, col, color)
+		gameState, err := game.Move1(row, col, color)
 		if err != nil {
 			return err
 		}
-
-		allPlayers := make([]*Player, 0)
-		allPlayers = append(allPlayers, val.BlackPlayer)
-		allPlayers = append(allPlayers, val.WhitePlayer)
-		allPlayers = append(allPlayers, val.Observers...)
-
-		for _, player := range allPlayers {
-			conn := gameManager.connectionManager.GetConnection(player.PlayerId)
-			if conn != nil {
-				bytes, _ := json.Marshal(gameState)
-				conn.WriteMessage(websocket.TextMessage, bytes)
-			}
-		}
+		gameManager.broadcast(game, gameState)
 		return nil
 	} else {
 		return errors.New("unable to make a move")
 	}
+}
+
+func (gameManager *GameManager) broadcast(game *Game, gameState *GameState) {
+	allPlayers := make([]*Player, 0)
+	allPlayers = append(allPlayers, game.BlackPlayer)
+	allPlayers = append(allPlayers, game.WhitePlayer)
+	allPlayers = append(allPlayers, game.Observers...)
+
+	for _, player := range allPlayers {
+		conn := gameManager.connectionManager.GetConnection(player.PlayerId)
+		if conn != nil {
+			bytes, _ := json.Marshal(gameState)
+			conn.WriteMessage(websocket.TextMessage, bytes)
+		}
+	}
+}
+
+func (gameManager *GameManager) Comment(gameId int64, playerId int64, comment string) error {
+	if game, ok := gameManager.games[gameId]; ok {
+
+		game.Comments = append(game.Comments, Comment{Timestamp: time.Now().Unix(), Content: comment})
+
+		gameState := game.GetGameState()
+		gameManager.broadcast(game, &gameState)
+
+		return nil
+	} else {
+		return errors.New("unable to make a move")
+	}
+}
+
+func (gameManager *GameManager) GetGames(playerId int64) (*int64, []int64) {
+	var playingGame *int64
+	observingGames := make([]int64, 0)
+	for gameId, game := range gameManager.games {
+		if game.BlackPlayer.PlayerId == playerId || game.WhitePlayer.PlayerId == playerId {
+			playingGame = &gameId
+		} else {
+			for _, o := range game.Observers {
+				if o.PlayerId == playerId {
+					observingGames = append(observingGames, gameId)
+					break
+				}
+			}
+		}
+	}
+	return playingGame, observingGames
 }
 
 func NewGameManager() *GameManager {
